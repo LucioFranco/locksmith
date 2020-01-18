@@ -52,9 +52,6 @@ impl<T: std::fmt::Debug> Stack<T> {
             return None;
         }
 
-        let old = unsafe { &mut *old_head };
-        let value = unsafe { old.value.with_mut(|p| (*p).take()) };
-
         let new_head = unsafe { &mut *old_head }.next;
 
         while self
@@ -62,6 +59,9 @@ impl<T: std::fmt::Debug> Stack<T> {
             .compare_and_swap(old_head, new_head, Ordering::AcqRel)
             != old_head
         {}
+
+        let old = unsafe { Box::from_raw(old_head) };
+        let value = unsafe { old.value.with_mut(|p| (*p).take()) };
 
         value
     }

@@ -5,10 +5,13 @@ use loom::{sync::Arc, thread};
 
 #[test]
 fn loom_stack() {
-    loom::model(|| {
+    let mut builder = loom::model::Builder::new();
+    builder.max_branches = 25_000;
+
+    builder.check(|| {
         let stack = Arc::new(Stack::new());
 
-        const NUM: usize = 10;
+        const NUM: usize = 3;
 
         let stack1 = stack.clone();
         let j1 = thread::spawn(move || {
@@ -29,8 +32,16 @@ fn loom_stack() {
 
         let mut res = Vec::new();
 
-        while let Some(value) = stack.pop() {
-            res.push(value);
+        loop {
+            if let Some(value) = stack.pop() {
+                res.push(value);
+            } else {
+                if res.len() >= 2 * NUM {
+                    break;
+                }
+
+                thread::yield_now();
+            }
         }
 
         for i in 0..NUM {
